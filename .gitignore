@@ -1,0 +1,6 @@
+# ignore logs and staate files
+*.json
+*.txt
+# Ignore python cache
+__pycache__/
+*.pyc
