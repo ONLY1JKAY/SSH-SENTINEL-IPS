@@ -1,12 +1,14 @@
 import requests
-test_ip = "8.8.8.8"
-url = f"http://ip-api.com/json/{test_ip}"
-response = requests.get(url).json()
 
-if response['status'] == 'success':
-    print(f"Intelligence for {test_ip}:")
-    print (f"Country: {response['country']}")
-    print(f"City: {response['city']}")
-    print(f"ISP: {response['isp']}")
-else:
-    print("Could not retrieve data for this IP.")
+def get_geo_info(ip):
+    try:
+        # We use ip-api.com as you had in your script
+        response = requests.get(f"http://ip-api.com/json/{ip}", timeout=5).json()
+        if response.get('status') == 'success':
+            return {
+                "country": response.get('country', 'Unknown'),
+                "isp": response.get('isp', 'Unknown')
+            }
+    except Exception:
+        pass
+    return {"country": "Unknown", "isp": "Unknown"}
