@@ -1,22 +1,13 @@
-log_file = open("/var/log/auth.log", "r")
-ip_counts = {}
-
-for line in log_file:
-    if "Failed password" in line:
-        parts = line.split()
-        ip = parts[-4]
-        ip_counts[ip] = ip_counts.get(ip, 0) + 1
-log_file.close()
-
-print(f"{'STATUS':<15} | {'IP ADDRESS':<15} | {'ATTEMPTS'}")
-print("-" * 50)
-
-for ip, count in ip_counts.items():
-    if count > 50:
-        status = "CRITICAL !!"
-    elif count > 10:
-        status = "WARNING"
-    else:
-        status = "LOW"
-
-    print(f"{status:<15} | {ip:<15} | {count}")
+def calculate_risk(ip, count, geo_data):
+    # Logic: High risk if attempts > 3 OR from a specific region
+    # You can expand this logic easily later!
+    score = count * 10
+    
+    if geo_data['country'] in ["Russia", "China", "North Korea", "India"]:
+        score += 50
+    
+    if score >= 30:
+        return "High", score
+    elif score >= 15:
+        return "Medium", score
+    return "Low", score
