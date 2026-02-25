@@ -2,7 +2,7 @@ import os
 import json
 import time
 from datetime import datetime
-import geolocator      # Import our scout
+import geo_intel      # Import our scout
 import risk_analyzer   # Import our brain
 
 # Configuration

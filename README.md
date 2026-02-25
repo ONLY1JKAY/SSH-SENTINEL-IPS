@@ -1,20 +1,48 @@
-# SSH-Sentinel: Automated Intrusion Prevention System
+# SSH-Sentinel: Automated Intrusion Prevention System for LInux
 
 ## Project Oveview
-SSH-Setinel is a host-based Intrusion Prevention System (IPS) designed to mitigate brute-force attacks on linux servers. It system authentication logs in real time, ientifies malicious patterns and dynamically updates the system firewall (UFW) to drop suspicious traffic.
+SSH-Setinel is a host-based Intrusion Prevention System (IPS) designed to detect, analyze and mitigate brute-force attacks on linux servers in real-time. It monitors system authentication logs in real time, identifies malicious patterns and applies risk scoring logic to suspicious IP addresses, categorize high risk threats with geographic metadata and updates the system firewall (UFW) to drop suspicious traffic.
+
+## Problem Statement
+Public facing linux servers are frequent targets of SSH brute force attacks.
+Repeated failed login atempts:
+* Increase attack surface
+* Indicate credential stuffing attempts
+* Can overwhelm logs
+
+Traditonal tools exist (eg Fail2ban) but this project was built to:
+* Deepen understanding of linux authentication flows
+* Implement custom detection logic
+* Practice automated mitigation techniques
+
+## Architecture Overview
+### Flow:
+  * SSH login attempt occurs
+  * PAM processes authentication
+  * Failed attempt written to '/var/log/auth.log'
+  * SSH-Sentinel-IPS parses logs
+  * IP addresses aggregrated
+  * Risk Score calculated
+  * High risk IPs enriched via REST API(Geo + ISP metadata)
+  * Critical threats automatically blocked via UFW
+  * Structured logs generated
 
 
-# Features
-Real-time Log Ingestion: Parses '/var/log/auth.log' for failed SSH attempts
-Automated Mitigation: Automaticaly triggers 'ufw block' commands for IPs exceeding a defined threshold.
-Persistent State Tracking: Records security events in a structured JSON for later analysis.
-Systemd Integration: Runs as a background daemon with automatic restart capabilities
+## Features
+*  **Real-time Log Ingestion:** Uses persistent file pointers to monitor '.var/log/auth.log instantly without re-reading the entire file
+*  **Modular Architeture:** Seperates core logic into specialized modules for geo location, risk analysis and engine orchestration 
+*  **Automated Mitigation:** Automaticaly triggers 'ufw block' commands for IPs exceeding a defined threshold
+*  **Geo-Intel Enrichment:** Automatically Identifies the coountry ans ISP of attackers using external API Integration.
+*  **Weighted Risk Scoring:** Evaluates threats based of attempt frequency and geographic origin to minimize false positives
+*  **Persistent State Tracking:** Records security events in a structured JSON for later analysis.
+*  **Systemd Integration:** Runs as a background daemon with automatic restart capabilities
 
 
 ## Technology Stack
-Language: Python
-Security Tools: UFW (Uncomplicated Firewall)
-Linux Services: Systemd (Service Management)
+* **Language:** Python
+*  **Security Tools:** UFW (Uncomplicated Firewall)
+*  **Linux Services:** Systemd (Service Management)
+*  **Libraries:** 'requests' for GEO-AP1 communication
 
 
 ## Installation & Setup
