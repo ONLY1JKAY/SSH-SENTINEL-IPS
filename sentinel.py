@@ -1,27 +1,17 @@
-import os 
-import requests
+import os
 import json
 import time
 from datetime import datetime
+import geolocator      # Import our scout
+import risk_analyzer   # Import our brain
 
-#Configuration
+# Configuration
 LOG_FILE = "/var/log/auth.log"
-BLOCK_LIST_FILE = "blocked_ips.txt"
 JSON_LOG = "security_events.json"
-THRESHOLD = 1
+BLOCK_LIST_FILE = "blocked_ips.txt"
 
-#GEO-LOCATION
-def get_geo_info(ip):
-    try:
-        response = requests.get(f"http://ip-api.com/json/{ip}", timeout=5).json()
-        if response['status'] == 'success':
-            return response['country']
-    except:
-        pass
-    return "Unknown"
-
-#Mitigation
 def block_ip(ip):
+    # Ensure block list exists
     if not os.path.exists(BLOCK_LIST_FILE):
         open(BLOCK_LIST_FILE, "w").close()
 
@@ -30,48 +20,60 @@ def block_ip(ip):
             return False
 
     os.system(f"sudo ufw deny from {ip}")
-
     with open(BLOCK_LIST_FILE, "a") as f:
         f.write(f"{ip}\n")
     return True
 
-def run_sentinel():
-    print (f"[+] {datetime.now()} - Shield Active")
+def monitor():
+    print(f"[+] {datetime.now()} - Shield Active & Monitoring Logs...")
+    
+    # Track failed attempts in memory for this session
+    stats = {}
 
-    ip_counts = {}
     with open(LOG_FILE, "r") as f:
-        for line in f:
+        # Jump to the end of the file so old logs aren't processed
+        f.seek(0, os.SEEK_END)
+
+        while True:
+            line = f.readline()
+            if not line:
+                time.sleep(1) # Wait for new logs
+                continue
+
             if "Failed password" in line:
-                ip = line.split()[-4]
-                ip_counts[ip] = ip_counts.get(ip, 0) + 1
+                # Extract IP (Usually 4th from the end in auth.log)
+                parts = line.split()
+                ip = parts[-4]
+                
+                stats[ip] = stats.get(ip, 0) + 1
+                
+                # Get Intelligence
+                geo_data = geolocator.get_geo_info(ip)
+                risk_level, score = risk_analyzer.calculate_risk(ip, stats[ip], geo_data)
 
-    for ip, count in ip_counts.items():
-        if count >= THRESHOLD:
-            country = get_geo_info(ip)
-            blocked = block_ip(ip)
+                if risk_level == "High":
+                    blocked = block_ip(ip)
+                    
+                    event = {
+                        "timestamp": str(datetime.now()),
+                        "ip": ip,
+                        "risk_score": score,
+                        "country": geo_data['country'],
+                        "isp": geo_data['isp'],
+                        "action": "BLOCKED" if blocked else "ALREADY_BANNED"
+                    }
 
-#Structured JSON Logging
-            event = {
-                "timestamp": str(datetime.now()),
-                "ip": ip,
-                "count": count,
-                "country": country,
-                "action": "BLOCKED" if blocked else "ALREADY_BLOCKED"
-        }
-            with open(JSON_LOG, "a") as f:
-                f.write(json.dumps(event) + "\n")
-            if blocked:
-                print(f"[!] CRITICAL: Blocked {ip} ({country}) - {count} attempts")
+                    with open(JSON_LOG, "a") as log_out:
+                        log_out.write(json.dumps(event) + "\n")
+
+                    if blocked:
+                        print(f"[!] {risk_level} RISK: Blocked {ip} ({geo_data['country']}) - Score: {score}")
 
 if __name__ == "__main__":
-    while True:
-        try:
-            run_sentinel()
-            print("[*] Scan complete. Sleeping for 60 seconds..")
-            time.sleep(60)
-        except Exception as e:
-            print(f"[!] System Error: {e}")
-            time.sleep(10)
+    try:
+        monitor()
+    except KeyboardInterrupt:
+        print("\n[+] Sentinel shutting down safely.")
 
 
 
